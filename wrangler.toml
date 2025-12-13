@@ -1,0 +1,5 @@
+name = "hayat-os"
+compatibility_date = "2024-12-13"
+
+[assets]
+directory = "./dist"

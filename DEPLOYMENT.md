@@ -77,7 +77,7 @@
    wrangler login
    
    # Upload files (from your audio folder)
-   wrangler r2 object put hayatos-audio/quran/001-fatiha.mp3 --file ./audio/001-fatiha.mp3
+   wrangler r2 object put hayatos-audio/quran/001-fatiha.mp3 --file ./audio/001-fatiha.mp3 --config wrangler.r2.toml
    ```
 
    Or use the **R2 Dashboard** to drag-and-drop files.

@@ -17,18 +17,22 @@ const JWT_SECRET = process.env.JWT_SECRET || 'hayatos-secret-key-change-in-produ
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const R2_AUDIO_URL = process.env.R2_AUDIO_URL || '';
 
-// CORS configuration for Cloudflare Pages
-const corsOptions = {
-  origin: process.env.NODE_ENV === 'production'
-    ? [FRONTEND_URL, /\.pages\.dev$/]
-    : '*',
+// DEBUG: Allow all origins dynamically
+app.use(cors({
+  origin: true, // Reflects the request origin
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-};
+}));
 
-app.use(cors(corsOptions));
 app.use(express.json());
+
+// Request Logger
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  console.log('Body:', JSON.stringify(req.body).substring(0, 100) + '...');
+  next();
+});
 
 // ==================== HEALTH CHECK ====================
 app.get('/', (req: Request, res: Response) => {
@@ -311,9 +315,13 @@ app.get('/api/finance/summary', authMiddleware, async (req: AuthRequest, res: Re
     take: 100
   });
 
-  const balance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-  const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-  const expenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+  const balance = accounts.reduce((sum: number, acc: any) => sum + acc.balance, 0);
+  const income = transactions
+    .filter((t: any) => t.type === 'income')
+    .reduce((sum: number, t: any) => sum + t.amount, 0);
+  const expenses = transactions
+    .filter((t: any) => t.type === 'expense')
+    .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
 
   res.json({ balance, income, expenses });
 });

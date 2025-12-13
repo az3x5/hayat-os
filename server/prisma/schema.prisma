@@ -1,1 +1,329 @@
-ÿταΘ¬Κ‹«
+// HayatOS Database Schema
+// Prisma schema for PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER & AUTH ====================
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String?
+  name          String?
+  avatarUrl     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  notes         Note[]
+  reminders     Reminder[]
+  habits        Habit[]
+  healthLogs    HealthLog[]
+  accounts      Account[]
+  transactions  Transaction[]
+  budgets       Budget[]
+  savingsGoals  SavingsGoal[]
+  bills         Bill[]
+  investments   Investment[]
+  loans         Loan[]
+  calendarEvents CalendarEvent[]
+  settings      UserSettings?
+}
+
+model UserSettings {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  themeMode    String   @default("system") // light, dark, system
+  accentColor  String   @default("blue")
+  density      String   @default("standard") // compact, standard, spacious
+  borderRadius Int      @default(16)
+  privacyMode  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ==================== NOTES ====================
+
+model Note {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  content    String   @db.Text
+  excerpt    String?
+  folder     String   @default("personal") // work, personal, health, islamic, journal, ideas, trash, archive
+  tags       String[] @default([])
+  color      String?
+  isPinned   Boolean  @default(false)
+  isFavorite Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([folder])
+}
+
+// ==================== REMINDERS ====================
+
+model Reminder {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  notes      String?
+  dueDate    DateTime
+  completed  Boolean  @default(false)
+  priority   String   @default("medium") // low, medium, high
+  category   String   @default("general") // work, personal, health, finance, islamic, general
+  tags       String[] @default([])
+  recurrence String?  // daily, weekly, monthly, none
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([dueDate])
+  @@index([completed])
+}
+
+// ==================== HABITS ====================
+
+model Habit {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  category    String     @default("personal") // health, work, personal, islamic, other
+  frequency   String     @default("daily") // daily, weekly, custom
+  target      Int?       // e.g., 5 times a week
+  color       String     @default("blue")
+  icon        String?
+  status      String     @default("active") // active, archived
+  streak      Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  logs        HabitLog[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model HabitLog {
+  id        String   @id @default(cuid())
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  status    String   // completed, skipped, missed
+  createdAt DateTime @default(now())
+
+  @@unique([habitId, date])
+  @@index([habitId])
+  @@index([date])
+}
+
+// ==================== HEALTH ====================
+
+model HealthLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // weight, steps, sleep, bp, water
+  value     Float
+  unit      String?
+  note      String?
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([date])
+}
+
+// ==================== FINANCE ====================
+
+model Account {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  type          String        // checking, savings, investment, cash, credit
+  balance       Float         @default(0)
+  accountNumber String?
+  institution   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  transactions  Transaction[]
+
+  @@index([userId])
+}
+
+model Transaction {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId  String
+  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  title      String
+  amount     Float
+  type       String   // income, expense
+  category   String
+  notes      String?
+  tags       String[] @default([])
+  recurring  Boolean  @default(false)
+  date       DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([date])
+  @@index([category])
+}
+
+model Budget {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  String
+  limit     Float
+  spent     Float    @default(0)
+  period    String   @default("monthly") // monthly, weekly
+  color     String   @default("blue")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model SavingsGoal {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  deadline      DateTime?
+  color         String    @default("blue")
+  icon          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Bill {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  amount    Float
+  dueDate   DateTime
+  isPaid    Boolean  @default(false)
+  category  String
+  frequency String   @default("monthly") // monthly, yearly
+  autoPay   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([dueDate])
+}
+
+model Investment {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  symbol       String
+  quantity     Float
+  currentPrice Float    @default(0)
+  type         String   // stock, crypto, etf, mutual_fund
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Loan {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  totalAmount     Float
+  remainingAmount Float
+  interestRate    Float
+  monthlyPayment  Float
+  dueDate         Int      // Day of month
+  provider        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ==================== CALENDAR ====================
+
+model CalendarEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  startTime String   // HH:mm format
+  endTime   String   // HH:mm format
+  date      DateTime @db.Date
+  category  String   @default("personal") // work, personal, health, islamic
+  location  String?
+  notes     String?
+  recurring String?  // daily, weekly, monthly, yearly
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+}
+
+// ==================== ISLAMIC ====================
+// Note: Duas, Hadith, Quran verses are typically static content
+// We only store user-specific data like favorites
+
+model FavoriteDua {
+  id        String   @id @default(cuid())
+  userId    String
+  duaId     String   // Reference to static Dua ID
+  createdAt DateTime @default(now())
+
+  @@unique([userId, duaId])
+}
+
+model FavoriteVerse {
+  id           String   @id @default(cuid())
+  userId       String
+  surahNumber  Int
+  verseNumber  Int
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, surahNumber, verseNumber])
+}
+
+model PrayerLog {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime @db.Date
+  prayer    String   // fajr, dhuhr, asr, maghrib, isha
+  prayed    Boolean  @default(false)
+  onTime    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date, prayer])
+  @@index([userId])
+  @@index([date])
+}

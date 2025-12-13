@@ -1,0 +1,29 @@
+# Render Blueprint for Express Backend
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: hayatos-api
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node src/index.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        fromDatabase:
+          name: hayatos-db
+          property: connectionString
+      - key: GEMINI_API_KEY
+        sync: false  # Set manually in Render dashboard
+
+databases:
+  - name: hayatos-db
+    plan: free
+    databaseName: hayatos
+    user: hayatos_user

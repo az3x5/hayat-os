@@ -1,0 +1,5 @@
+{
+  "name": "HayatOS",
+  "description": "A minimalist, responsive personal management dashboard featuring calendar, notes, health, finance, and Islamic prayer times, integrated with Gemini for daily insights.",
+  "requestFramePermissions": []
+}

@@ -1,14 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
+
+const API_URL = (typeof process !== 'undefined' && process.env?.API_URL) || 'http://localhost:3001';
 
 interface User {
   id: string;
-  name: string;
+  name: string | null;
   email: string;
-  avatar?: string;
+  avatarUrl?: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -18,81 +22,96 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Create axios instance with auth header
+const createAuthApi = (token: string | null) => {
+  const api = axios.create({
+    baseURL: API_URL,
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  return api;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Check for existing session on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('lifeos_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      // Auto-login for demo purposes
-      const demoUser = {
-        id: '1',
-        name: 'Ali Developer',
-        email: 'ali@hayatos.com',
-        avatar: 'https://ui-avatars.com/api/?name=Ali+Developer&background=0D8ABC&color=fff'
-      };
-      localStorage.setItem('lifeos_user', JSON.stringify(demoUser));
-      setUser(demoUser);
-    }
-    setIsLoading(false);
+    const checkAuth = async () => {
+      const storedToken = localStorage.getItem('hayatos_token');
+
+      if (storedToken) {
+        try {
+          const api = createAuthApi(storedToken);
+          const response = await api.get('/api/auth/me');
+          setUser(response.data);
+          setToken(storedToken);
+        } catch (error) {
+          // Token invalid or expired
+          localStorage.removeItem('hayatos_token');
+          localStorage.removeItem('hayatos_user');
+        }
+      }
+
+      setIsLoading(false);
+    };
+
+    checkAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        // Mock validation
-        if (password.length < 6) {
-          reject(new Error('Password must be at least 6 characters'));
-          return;
-        }
-        
-        const mockUser = {
-          id: '1',
-          name: 'Ali Developer',
-          email: email,
-          avatar: 'https://ui-avatars.com/api/?name=Ali+Developer&background=0D8ABC&color=fff'
-        };
-        
-        localStorage.setItem('lifeos_user', JSON.stringify(mockUser));
-        setUser(mockUser);
-        resolve();
-      }, 1000); // Simulate API delay
-    });
+    try {
+      const response = await axios.post(`${API_URL}/api/auth/login`, {
+        email,
+        password
+      });
+
+      const { user: userData, token: authToken } = response.data;
+
+      localStorage.setItem('hayatos_token', authToken);
+      localStorage.setItem('hayatos_user', JSON.stringify(userData));
+
+      setToken(authToken);
+      setUser(userData);
+    } catch (error: any) {
+      const message = error.response?.data?.error || 'Login failed';
+      throw new Error(message);
+    }
   };
 
   const signup = async (name: string, email: string, password: string) => {
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        if (!name || !email || !password) {
-           reject(new Error('All fields are required'));
-           return;
-        }
+    try {
+      const response = await axios.post(`${API_URL}/api/auth/register`, {
+        name,
+        email,
+        password
+      });
 
-        const mockUser = {
-          id: Date.now().toString(),
-          name: name,
-          email: email,
-        };
-        
-        localStorage.setItem('lifeos_user', JSON.stringify(mockUser));
-        setUser(mockUser);
-        resolve();
-      }, 1000);
-    });
+      const { user: userData, token: authToken } = response.data;
+
+      localStorage.setItem('hayatos_token', authToken);
+      localStorage.setItem('hayatos_user', JSON.stringify(userData));
+
+      setToken(authToken);
+      setUser(userData);
+    } catch (error: any) {
+      const message = error.response?.data?.error || 'Registration failed';
+      throw new Error(message);
+    }
   };
 
   const logout = () => {
-    localStorage.removeItem('lifeos_user');
+    localStorage.removeItem('hayatos_token');
+    localStorage.removeItem('hayatos_user');
+    setToken(null);
     setUser(null);
   };
 
   const value = {
     user,
-    isAuthenticated: !!user,
+    token,
+    isAuthenticated: !!user && !!token,
     isLoading,
     login,
     signup,
@@ -112,4 +131,10 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+};
+
+// Export helper to get auth headers for API calls
+export const getAuthHeaders = () => {
+  const token = localStorage.getItem('hayatos_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
 };

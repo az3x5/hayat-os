@@ -1,8 +1,9 @@
 import axios from 'axios';
-import { Note, Reminder, Transaction, HealthLog } from '../types';
+import { Note, Reminder, Transaction, HealthLog, Habit, CalendarEvent } from '../types';
 
-const API_URL = (typeof process !== 'undefined' && process.env?.API_URL) || 'http://localhost:3001/api';
+const API_URL = (typeof process !== 'undefined' && process.env?.API_URL) || 'http://localhost:3001';
 
+// Create axios instance with interceptor for auth
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -10,29 +11,80 @@ const api = axios.create({
   },
 });
 
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('hayatos_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Handle 401 responses (token expired)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('hayatos_token');
+      localStorage.removeItem('hayatos_user');
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ==================== NOTES ====================
 export const NotesService = {
-  getAll: async () => (await api.get<Note[]>('/notes')).data,
-  create: async (note: Partial<Note>) => (await api.post<Note>('/notes', note)).data,
-  update: async (id: string, note: Partial<Note>) => (await api.put<Note>(`/notes/${id}`, note)).data,
-  delete: async (id: string) => (await api.delete(`/notes/${id}`)).data,
+  getAll: async () => (await api.get<Note[]>('/api/notes')).data,
+  create: async (note: Partial<Note>) => (await api.post<Note>('/api/notes', note)).data,
+  update: async (id: string, note: Partial<Note>) => (await api.put<Note>(`/api/notes/${id}`, note)).data,
+  delete: async (id: string) => (await api.delete(`/api/notes/${id}`)).data,
 };
 
+// ==================== REMINDERS ====================
 export const RemindersService = {
-  getAll: async () => (await api.get<Reminder[]>('/reminders')).data,
-  create: async (reminder: Partial<Reminder>) => (await api.post<Reminder>('/reminders', reminder)).data,
-  toggleComplete: async (id: string) => (await api.patch<Reminder>(`/reminders/${id}/toggle`)).data,
-  delete: async (id: string) => (await api.delete(`/reminders/${id}`)).data,
+  getAll: async () => (await api.get<Reminder[]>('/api/reminders')).data,
+  create: async (reminder: Partial<Reminder>) => (await api.post<Reminder>('/api/reminders', reminder)).data,
+  toggleComplete: async (id: string) => (await api.patch<Reminder>(`/api/reminders/${id}/toggle`)).data,
+  delete: async (id: string) => (await api.delete(`/api/reminders/${id}`)).data,
 };
 
-export const FinanceService = {
-  getSummary: async () => (await api.get('/finance/summary')).data,
-  getTransactions: async () => (await api.get<Transaction[]>('/transactions')).data,
-  createTransaction: async (tx: Partial<Transaction>) => (await api.post<Transaction>('/transactions', tx)).data,
+// ==================== HABITS ====================
+export const HabitsService = {
+  getAll: async () => (await api.get<Habit[]>('/api/habits')).data,
+  create: async (habit: Partial<Habit>) => (await api.post<Habit>('/api/habits', habit)).data,
+  logStatus: async (id: string, date: string, status: string) =>
+    (await api.post(`/api/habits/${id}/log`, { date, status })).data,
 };
 
+// ==================== HEALTH ====================
 export const HealthService = {
-  getLogs: async () => (await api.get<HealthLog[]>('/health')).data,
-  logEntry: async (entry: Partial<HealthLog>) => (await api.post<HealthLog>('/health', entry)).data,
+  getLogs: async () => (await api.get<HealthLog[]>('/api/health')).data,
+  logEntry: async (entry: Partial<HealthLog>) => (await api.post<HealthLog>('/api/health', entry)).data,
+};
+
+// ==================== FINANCE ====================
+export const FinanceService = {
+  getSummary: async () => (await api.get('/api/finance/summary')).data,
+  getAccounts: async () => (await api.get('/api/accounts')).data,
+  getTransactions: async () => (await api.get<Transaction[]>('/api/transactions')).data,
+  createTransaction: async (tx: Partial<Transaction>) => (await api.post<Transaction>('/api/transactions', tx)).data,
+  getBudgets: async () => (await api.get('/api/budgets')).data,
+  getGoals: async () => (await api.get('/api/finance/goals')).data,
+};
+
+// ==================== CALENDAR ====================
+export const CalendarService = {
+  getEvents: async () => (await api.get<CalendarEvent[]>('/api/events')).data,
+  create: async (event: Partial<CalendarEvent>) => (await api.post<CalendarEvent>('/api/events', event)).data,
+  update: async (id: string, event: Partial<CalendarEvent>) => (await api.put<CalendarEvent>(`/api/events/${id}`, event)).data,
+  delete: async (id: string) => (await api.delete(`/api/events/${id}`)).data,
+};
+
+// ==================== SETTINGS ====================
+export const SettingsService = {
+  get: async () => (await api.get('/api/settings')).data,
+  update: async (settings: any) => (await api.put('/api/settings', settings)).data,
 };
 
 export default api;

@@ -1,0 +1,15 @@
+{
+    "short_name": "HayatOS",
+    "name": "HayatOS - Life Operating System",
+    "icons": [
+        {
+            "src": "/vite.svg",
+            "sizes": "192x192 512x512",
+            "type": "image/svg+xml"
+        }
+    ],
+    "start_url": "/",
+    "display": "standalone",
+    "theme_color": "#10b981",
+    "background_color": "#ffffff"
+}

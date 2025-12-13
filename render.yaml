@@ -10,9 +10,10 @@ services:
     rootDir: server
     buildCommand: |
       npm install
+      npm run build
       npx prisma generate
       npx prisma migrate deploy
-    startCommand: node --experimental-specifier-resolution=node src/index.ts
+    startCommand: npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -30,7 +31,7 @@ services:
       - key: R2_AUDIO_URL
         sync: false
       - key: FRONTEND_URL
-        sync: false  # Set to your Cloudflare Pages URL
+        sync: false
 
 databases:
   - name: hayatos-db

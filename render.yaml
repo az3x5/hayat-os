@@ -24,13 +24,13 @@ services:
           name: hayatos-db
           property: connectionString
       - key: JWT_SECRET
-        generateValue: true  # Auto-generate secure secret
+        generateValue: true
       - key: GEMINI_API_KEY
-        sync: false  # Set manually in Render dashboard
+        sync: false
       - key: R2_AUDIO_URL
-        sync: false  # Set to your Cloudflare R2 public URL
+        sync: false
       - key: FRONTEND_URL
-        sync: false  # Set to your Cloudflare Pages URL for CORS
+        sync: false  # Set to your Cloudflare Pages URL
 
 databases:
   - name: hayatos-db

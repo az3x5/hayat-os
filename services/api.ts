@@ -2,7 +2,8 @@ import axios from 'axios';
 import { Note, Reminder, Transaction, HealthLog, Habit, CalendarEvent } from '../types';
 
 // Use Vite environment variables (set in Cloudflare Pages dashboard)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Fallback to Render URL in production if env var fails
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://hayatos-api-7kot.onrender.com' : 'http://localhost:3001');
 
 // Create axios instance with interceptor for auth
 const api = axios.create({

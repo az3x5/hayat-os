@@ -18,6 +18,29 @@ const JWT_SECRET = process.env.JWT_SECRET || 'hayatos-secret-key-change-in-produ
 app.use(cors());
 app.use(express.json());
 
+// ==================== HEALTH CHECK ====================
+app.get('/', (req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    message: 'HayatOS API Server',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth/login, /api/auth/register, /api/auth/me',
+      notes: '/api/notes',
+      reminders: '/api/reminders',
+      habits: '/api/habits',
+      health: '/api/health',
+      finance: '/api/finance/summary, /api/transactions',
+      calendar: '/api/events',
+      settings: '/api/settings'
+    }
+  });
+});
+
+app.get('/api/health', (req: Request, res: Response) => {
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
 // ==================== AUTH TYPES ====================
 
 interface AuthRequest extends Request {

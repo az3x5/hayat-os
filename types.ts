@@ -125,7 +125,7 @@ export interface Investment {
   symbol: string;
   quantity: number;
   currentPrice: number;
-  value: number; 
+  value: number;
   change: number; // percentage
   type: 'stock' | 'crypto' | 'etf' | 'mutual_fund';
 }
@@ -157,9 +157,11 @@ export interface CalendarEvent {
   title: string;
   startTime: string;
   endTime: string;
-  category: 'work' | 'personal' | 'health' | 'islamic';
+  category: 'work' | 'personal' | 'health' | 'islamic' | 'family';
   date: Date;
   location?: string;
+  description?: string;
+  color?: string;
 }
 
 export interface Dua {

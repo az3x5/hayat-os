@@ -47,6 +47,7 @@ export const RemindersService = {
   getAll: async () => (await api.get<Reminder[]>('/api/reminders')).data,
   create: async (reminder: Partial<Reminder>) => (await api.post<Reminder>('/api/reminders', reminder)).data,
   toggleComplete: async (id: string) => (await api.patch<Reminder>(`/api/reminders/${id}/toggle`)).data,
+  update: async (id: string, reminder: Partial<Reminder>) => (await api.put<Reminder>(`/api/reminders/${id}`, reminder)).data,
   delete: async (id: string) => (await api.delete(`/api/reminders/${id}`)).data,
 };
 
@@ -56,6 +57,8 @@ export const HabitsService = {
   create: async (habit: Partial<Habit>) => (await api.post<Habit>('/api/habits', habit)).data,
   logStatus: async (id: string, date: string, status: string) =>
     (await api.post(`/api/habits/${id}/log`, { date, status })).data,
+  update: async (id: string, habit: Partial<Habit>) => (await api.put<Habit>(`/api/habits/${id}`, habit)).data,
+  delete: async (id: string) => (await api.delete(`/api/habits/${id}`)).data,
 };
 
 // ==================== HEALTH ====================
@@ -68,8 +71,11 @@ export const HealthService = {
 export const FinanceService = {
   getSummary: async () => (await api.get('/api/finance/summary')).data,
   getAccounts: async () => (await api.get('/api/accounts')).data,
+  createAccount: async (account: any) => (await api.post('/api/accounts', account)).data,
+  updateAccount: async (id: string, account: any) => (await api.put(`/api/accounts/${id}`, account)).data,
   getTransactions: async () => (await api.get<Transaction[]>('/api/transactions')).data,
   createTransaction: async (tx: Partial<Transaction>) => (await api.post<Transaction>('/api/transactions', tx)).data,
+  updateTransaction: async (id: string, tx: Partial<Transaction>) => (await api.put<Transaction>(`/api/transactions/${id}`, tx)).data,
   getBudgets: async () => (await api.get('/api/budgets')).data,
   getGoals: async () => (await api.get('/api/finance/goals')).data,
 };
@@ -82,10 +88,32 @@ export const CalendarService = {
   delete: async (id: string) => (await api.delete(`/api/events/${id}`)).data,
 };
 
+export const IslamicService = {
+  getPrayerTimes: async (coords: { lat: number; lng: number }, date: Date) => {
+    // Using Aladhan API
+    const dateStr = date.toISOString().split('T')[0].split('-').reverse().join('-'); // DD-MM-YYYY
+    const response = await axios.get(`https://api.aladhan.com/v1/timings/${dateStr}`, {
+      params: {
+        latitude: coords.lat,
+        longitude: coords.lng,
+        method: 2, // ISNA
+        school: 0 // Shafi
+      }
+    });
+    return response.data.data;
+  },
+  getLogs: async (dateStr: string) => (await api.get(`/api/islamic/logs?date=${dateStr}`)).data,
+  logPrayer: async (data: { date: string; prayer: string; status: string }) => (await api.post('/api/islamic/logs', data)).data,
+  getQibla: async (lat: number, lng: number) => {
+    const response = await axios.get(`https://api.aladhan.com/v1/qibla/${lat}/${lng}`);
+    return response.data.data;
+  }
+};
+
 // ==================== SETTINGS ====================
 export const SettingsService = {
-  get: async () => (await api.get('/api/settings')).data,
-  update: async (settings: any) => (await api.put('/api/settings', settings)).data,
+  getSettings: async () => (await api.get('/api/settings')).data,
+  updateSettings: async (settings: any) => (await api.put('/api/settings', settings)).data,
 };
 
 // ==================== CONFIG ====================

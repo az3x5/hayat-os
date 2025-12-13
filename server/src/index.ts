@@ -266,6 +266,17 @@ app.patch('/api/reminders/:id/toggle', authMiddleware, async (req: AuthRequest, 
   res.json(updated);
 });
 
+
+
+app.put('/api/reminders/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const reminder = await prisma.reminder.update({
+    where: { id },
+    data: req.body
+  });
+  res.json(reminder);
+});
+
 app.delete('/api/reminders/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   await prisma.reminder.delete({ where: { id } });
@@ -294,6 +305,29 @@ app.post('/api/habits/:id/log', authMiddleware, async (req: AuthRequest, res: Re
   const { id } = req.params;
   const { date, status } = req.body;
 
+  // Check if log exists
+  const existingLog = await prisma.habitLog.findFirst({
+    where: {
+      habitId: id,
+      date: new Date(date)
+    }
+  });
+
+  if (status === 'none' || status === null) {
+    if (existingLog) {
+      await prisma.habitLog.delete({ where: { id: existingLog.id } });
+    }
+    return res.json({ success: true, removed: true });
+  }
+
+  if (existingLog) {
+    const updated = await prisma.habitLog.update({
+      where: { id: existingLog.id },
+      data: { status }
+    });
+    return res.json(updated);
+  }
+
   const log = await prisma.habitLog.create({
     data: {
       habitId: id,
@@ -303,6 +337,21 @@ app.post('/api/habits/:id/log', authMiddleware, async (req: AuthRequest, res: Re
   });
 
   res.json(log);
+});
+
+app.put('/api/habits/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const habit = await prisma.habit.update({
+    where: { id },
+    data: req.body
+  });
+  res.json(habit);
+});
+
+app.delete('/api/habits/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  await prisma.habit.delete({ where: { id } });
+  res.json({ success: true });
 });
 
 // --- FINANCE Routes ---
@@ -374,6 +423,24 @@ app.post('/api/transactions', authMiddleware, async (req: AuthRequest, res: Resp
   res.json(transaction);
 });
 
+app.put('/api/transactions/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const transaction = await prisma.transaction.update({
+    where: { id },
+    data: req.body
+  });
+  res.json(transaction);
+});
+
+app.put('/api/accounts/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const account = await prisma.account.update({
+    where: { id },
+    data: req.body
+  });
+  res.json(account);
+});
+
 app.get('/api/finance/goals', authMiddleware, async (req: AuthRequest, res: Response) => {
   const userId = getUserId(req);
   const goals = await prisma.savingsGoal.findMany({ where: { userId } });
@@ -435,6 +502,58 @@ app.delete('/api/events/:id', authMiddleware, async (req: AuthRequest, res: Resp
   const { id } = req.params;
   await prisma.calendarEvent.delete({ where: { id } });
   res.json({ success: true });
+});
+
+// --- ISLAMIC Routes ---
+app.get('/api/islamic/logs', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const userId = getUserId(req);
+  const { date } = req.query; // YYYY-MM-DD
+
+  if (!date) {
+    return res.status(400).json({ error: 'Date required' });
+  }
+
+  const logs = await prisma.prayerLog.findMany({
+    where: {
+      userId,
+      date: new Date(date as string)
+    }
+  });
+  res.json(logs);
+});
+
+app.post('/api/islamic/logs', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const userId = getUserId(req);
+  const { date, prayer, status } = req.body; // status = 'completed', 'missed', 'late'
+
+  // Upsert logic manually since we have unique constraint
+  // Actually Prisma upsert is perfect
+  const log = await prisma.prayerLog.upsert({
+    where: {
+      userId_date_prayer: {
+        userId,
+        date: new Date(date),
+        prayer
+      }
+    },
+    update: {
+      prayed: status === 'completed' || status === 'late',
+      onTime: status === 'completed'
+      // We might want to store exact 'status' string if schema allowed, but schema has boolean flags.
+      // Schema: prayed (bool), onTime (bool).
+      // So 'completed' -> prayed=true, onTime=true
+      // 'late' -> prayed=true, onTime=false
+      // 'missed' -> prayed=false, onTime=false
+    },
+    create: {
+      userId,
+      date: new Date(date),
+      prayer,
+      prayed: status === 'completed' || status === 'late',
+      onTime: status === 'completed'
+    }
+  });
+  res.json(log);
 });
 
 // --- USER SETTINGS Routes ---

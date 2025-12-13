@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Search, 
-  Plus, 
-  LayoutGrid, 
-  List, 
-  Star, 
-  Pin, 
-  Trash2, 
-  FolderOpen, 
-  Briefcase, 
-  User, 
-  Heart, 
-  Moon, 
-  BookOpen, 
-  Lightbulb, 
+import {
+  Search,
+  Plus,
+  LayoutGrid,
+  List,
+  Star,
+  Pin,
+  Trash2,
+  FolderOpen,
+  Briefcase,
+  User,
+  Heart,
+  Moon,
+  BookOpen,
+  Lightbulb,
   ChevronLeft,
   Save,
   PanelLeft,
@@ -25,8 +25,8 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Note } from '../../types';
-import { MOCK_NOTES } from '../../constants';
 import { useConfig } from '../../context/ConfigContext';
+import { NotesService } from '../../services/api';
 import ConfirmModal from '../ui/ConfirmModal';
 
 type ViewMode = 'grid' | 'list';
@@ -35,14 +35,15 @@ type FolderType = 'work' | 'personal' | 'health' | 'islamic' | 'journal' | 'idea
 
 // Helper to strip HTML for excerpts
 const stripHtml = (html: string) => {
-   const tmp = document.createElement("DIV");
-   tmp.innerHTML = html;
-   return tmp.textContent || tmp.innerText || "";
+  const tmp = document.createElement("DIV");
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || "";
 };
 
 const NotesModule: React.FC = () => {
   // State
-  const [notes, setNotes] = useState<Note[]>(MOCK_NOTES);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
@@ -51,10 +52,10 @@ const NotesModule: React.FC = () => {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
-  
+
   // Delete Confirmation State
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
-  
+
   // Consume Config for Folders
   const { folders } = useConfig();
 
@@ -64,7 +65,7 @@ const NotesModule: React.FC = () => {
   const [editorColor, setEditorColor] = useState<string>('white');
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // Quill Ref
   const quillRef = useRef<any>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
@@ -73,10 +74,10 @@ const NotesModule: React.FC = () => {
   const filteredNotes = notes.filter(note => {
     // Search Filter
     const plainTextContent = stripHtml(note.content).toLowerCase();
-    const matchesSearch = 
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const matchesSearch =
+      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       plainTextContent.includes(searchQuery.toLowerCase());
-    
+
     if (!matchesSearch) return false;
 
     // Category/Folder Filter
@@ -96,6 +97,22 @@ const NotesModule: React.FC = () => {
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
 
+  // Fetch Notes on Mount
+  useEffect(() => {
+    const fetchNotes = async () => {
+      try {
+        setLoading(true);
+        const fetchedNotes = await NotesService.getAll();
+        setNotes(fetchedNotes);
+      } catch (error) {
+        console.error('Failed to fetch notes:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotes();
+  }, []);
+
   // Quill Initialization and Sync
   useEffect(() => {
     if (isEditorOpen && editorContainerRef.current && !quillRef.current) {
@@ -104,32 +121,32 @@ const NotesModule: React.FC = () => {
       if (Quill) {
         // Base modules configuration
         const modules: any = {
-            toolbar: [
-              [{ 'header': [1, 2, 3, false] }],
-              ['bold', 'italic', 'underline', 'strike'],
-              [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'list': 'check' }],
-              ['link', 'image'],
-              ['blockquote', 'code-block'],
-              [{ 'color': [] }, { 'background': [] }],
-              ['clean']
-            ]
+          toolbar: [
+            [{ 'header': [1, 2, 3, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'list': 'check' }],
+            ['link', 'image'],
+            ['blockquote', 'code-block'],
+            [{ 'color': [] }, { 'background': [] }],
+            ['clean']
+          ]
         };
 
         // Safe Registration of Image Resize
         const ImageResize = (window as any).ImageResize?.default || (window as any).ImageResize;
         if (ImageResize) {
-           if (!Quill.imports['modules/imageResize']) {
-              try {
-                Quill.register('modules/imageResize', ImageResize);
-              } catch (e) {
-                console.warn('Failed to register ImageResize module', e);
-              }
-           }
-           if (Quill.imports['modules/imageResize']) {
-               modules.imageResize = {
-                  displaySize: true
-               };
-           }
+          if (!Quill.imports['modules/imageResize']) {
+            try {
+              Quill.register('modules/imageResize', ImageResize);
+            } catch (e) {
+              console.warn('Failed to register ImageResize module', e);
+            }
+          }
+          if (Quill.imports['modules/imageResize']) {
+            modules.imageResize = {
+              displaySize: true
+            };
+          }
         }
 
         quillRef.current = new Quill(editorContainerRef.current, {
@@ -140,7 +157,7 @@ const NotesModule: React.FC = () => {
 
         // Handle Change
         quillRef.current.on('text-change', () => {
-           setEditorContent(quillRef.current.root.innerHTML);
+          setEditorContent(quillRef.current.root.innerHTML);
         });
       }
     }
@@ -148,17 +165,17 @@ const NotesModule: React.FC = () => {
 
   // Sync content when opening a new note
   useEffect(() => {
-     if (isEditorOpen && quillRef.current) {
-        const currentEditorText = quillRef.current.root.innerHTML;
-        let contentToLoad = selectedNote?.content || '';
-        if (!contentToLoad.includes('<') && contentToLoad.includes('\n')) {
-            contentToLoad = contentToLoad.replace(/\n/g, '<br>');
-        }
-        
-        if (currentEditorText !== contentToLoad) {
-           quillRef.current.root.innerHTML = contentToLoad;
-        }
-     }
+    if (isEditorOpen && quillRef.current) {
+      const currentEditorText = quillRef.current.root.innerHTML;
+      let contentToLoad = selectedNote?.content || '';
+      if (!contentToLoad.includes('<') && contentToLoad.includes('\n')) {
+        contentToLoad = contentToLoad.replace(/\n/g, '<br>');
+      }
+
+      if (currentEditorText !== contentToLoad) {
+        quillRef.current.root.innerHTML = contentToLoad;
+      }
+    }
   }, [selectedNote, isEditorOpen]);
 
 
@@ -172,102 +189,148 @@ const NotesModule: React.FC = () => {
     setIsColorPickerOpen(false);
   };
 
-  const handleCreateNote = () => {
+  const handleCreateNote = async () => {
     const targetFolder = activeFolder && activeFolder !== 'trash' && activeFolder !== 'archive' ? (activeFolder as any) : 'personal';
     const folderObj = folders.find(f => f.id === targetFolder);
     const defaultColor = folderObj?.color || 'white';
 
-    const newNote: Note = {
-      id: Date.now().toString(),
+    const newNotePartial: Partial<Note> = {
       title: '',
       content: '',
       excerpt: '',
-      timestamp: new Date(),
       folder: targetFolder,
       tags: [],
       isPinned: false,
       isFavorite: false,
       color: defaultColor
     };
-    handleOpenNote(newNote);
+
+    // Optimistic UI update (optional, but for new note usually we want ID from server if creating immediately)
+    // Actually, create blank note on server immediately so we have an ID for autosave
+    try {
+      const createdNote = await NotesService.create(newNotePartial);
+      setNotes([createdNote, ...notes]);
+      handleOpenNote(createdNote);
+    } catch (err) {
+      console.error('Failed to create note', err);
+    }
   };
 
-  const handleSaveNote = () => {
+  const handleSaveNote = async () => {
+    if (!selectedNote) return;
+
     setIsSaving(true);
-    setTimeout(() => {
-      if (selectedNote) {
-        const plainText = stripHtml(editorContent);
-        const excerpt = plainText.substring(0, 100) + (plainText.length > 100 ? '...' : '');
 
-        const updatedNotes = notes.map(n => 
-          n.id === selectedNote.id 
-            ? { 
-                ...n, 
-                title: editorTitle || 'Untitled Note', 
-                content: editorContent,
-                excerpt: excerpt,
-                timestamp: new Date(),
-                color: editorColor
-              } 
-            : n
-        );
-        
-        if (!notes.find(n => n.id === selectedNote.id)) {
-           const newNote = {
-              ...selectedNote,
-              title: editorTitle || 'Untitled Note',
-              content: editorContent,
-              excerpt: excerpt,
-              color: editorColor
-           };
-           setNotes([newNote, ...notes]);
-        } else {
-           setNotes(updatedNotes);
-        }
-      }
+    // Prepare update payload
+    const plainText = stripHtml(editorContent);
+    const excerpt = plainText.substring(0, 100) + (plainText.length > 100 ? '...' : '');
+
+    const updates = {
+      title: editorTitle || 'Untitled Note',
+      content: editorContent,
+      excerpt: excerpt,
+      color: editorColor,
+      folder: selectedNote.folder // Ensure folder is preserved or updated if needed
+    };
+
+    // Optimistic UI
+    setNotes(prev => prev.map(n => n.id === selectedNote.id ? { ...n, ...updates, timestamp: new Date() } : n));
+
+    // API Call
+    try {
+      const updatedNote = await NotesService.update(selectedNote.id, updates);
+      // Update state with server response (timestamp etc)
+      setNotes(prev => prev.map(n => n.id === selectedNote.id ? updatedNote : n));
+    } catch (error) {
+      console.error('Failed to save note:', error);
+      // Revert or show error
+    } finally {
       setIsSaving(false);
-    }, 600);
+    }
   };
 
-  const togglePin = (e: React.MouseEvent, id: string) => {
+  const togglePin = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    setNotes(notes.map(n => n.id === id ? { ...n, isPinned: !n.isPinned } : n));
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+
+    // Optimistic
+    const newStatus = !note.isPinned;
+    setNotes(notes.map(n => n.id === id ? { ...n, isPinned: newStatus } : n));
+
+    try {
+      await NotesService.update(id, { isPinned: newStatus });
+    } catch (err) {
+      console.error('Failed to toggle pin', err);
+      // Revert
+      setNotes(notes.map(n => n.id === id ? { ...n, isPinned: !newStatus } : n));
+    }
   };
 
-  const toggleFavorite = (e: React.MouseEvent, id: string) => {
+  const toggleFavorite = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    setNotes(notes.map(n => n.id === id ? { ...n, isFavorite: !n.isFavorite } : n));
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+
+    // Optimistic
+    const newStatus = !note.isFavorite;
+    setNotes(notes.map(n => n.id === id ? { ...n, isFavorite: newStatus } : n));
+
+    try {
+      await NotesService.update(id, { isFavorite: newStatus });
+    } catch (err) {
+      console.error('Failed to toggle favorite', err);
+      setNotes(notes.map(n => n.id === id ? { ...n, isFavorite: !newStatus } : n));
+    }
   };
-  
-  const toggleArchive = (e: React.MouseEvent, id: string) => {
+
+  const toggleArchive = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    setNotes(notes.map(n => {
-      if (n.id === id) {
-        return {
-          ...n,
-          folder: n.folder === 'archive' ? 'personal' : 'archive'
-        };
-      }
-      return n;
-    }));
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+
+    const newFolder = note.folder === 'archive' ? 'personal' : 'archive'; // fallback to personal if unarchiving
+
+    // Optimistic
+    setNotes(notes.map(n => n.id === id ? { ...n, folder: newFolder } : n));
     if (selectedNote?.id === id && isEditorOpen) {
-       closeEditor();
+      closeEditor();
+    }
+
+    try {
+      await NotesService.update(id, { folder: newFolder });
+    } catch (err) {
+      console.error('Failed to toggle archive', err);
+      // Revert
+      setNotes(notes.map(n => n.id === id ? { ...n, folder: note.folder } : n));
     }
   };
 
   const initiateMoveToTrash = (e: React.MouseEvent, id: string) => {
-     e.stopPropagation();
-     setNoteToDelete(id);
+    e.stopPropagation();
+    setNoteToDelete(id);
   }
 
-  const confirmMoveToTrash = () => {
-     if (noteToDelete) {
-        setNotes(notes.map(n => n.id === noteToDelete ? { ...n, folder: 'trash' } : n));
-        setNoteToDelete(null);
-        if (selectedNote?.id === noteToDelete) {
-           closeEditor();
-        }
-     }
+  const confirmMoveToTrash = async () => {
+    if (noteToDelete) {
+      // Optimistic
+      setNotes(notes.map(n => n.id === noteToDelete ? { ...n, folder: 'trash' } : n));
+
+      const noteId = noteToDelete;
+      setNoteToDelete(null);
+      if (selectedNote?.id === noteId) {
+        closeEditor();
+      }
+
+      try {
+        // We can either update folder to 'trash' or hard delete if 'trash' is implemented as delete
+        // Looking at Filters, 'trash' is just a folder.
+        await NotesService.update(noteId, { folder: 'trash' });
+      } catch (err) {
+        console.error('Failed to move to trash', err);
+        // Revert not implemented for brevity
+      }
+    }
   }
 
   useEffect(() => {
@@ -281,7 +344,7 @@ const NotesModule: React.FC = () => {
 
 
   const getColorStyles = (color: string = 'white') => {
-    switch(color) {
+    switch (color) {
       case 'blue': return { bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-700', ring: 'ring-blue-200', placeholder: 'placeholder-blue-300' };
       case 'amber': return { bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-700', ring: 'ring-amber-200', placeholder: 'placeholder-amber-300' };
       case 'emerald': return { bg: 'bg-emerald-50', border: 'border-emerald-100', text: 'text-emerald-700', ring: 'ring-emerald-200', placeholder: 'placeholder-emerald-300' };
@@ -302,7 +365,7 @@ const NotesModule: React.FC = () => {
 
   return (
     <div className="flex h-[calc(100vh-6rem)] bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
-      
+
       {/* Left Sidebar */}
       <div className={`
         bg-slate-50 border-r border-slate-200 flex-col flex-shrink-0 transition-all duration-300
@@ -316,9 +379,9 @@ const NotesModule: React.FC = () => {
           <div className="p-4 border-b border-slate-200">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <input 
-                type="text" 
-                placeholder="Search notes..." 
+              <input
+                type="text"
+                placeholder="Search notes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder-slate-400 text-slate-900"
@@ -328,31 +391,31 @@ const NotesModule: React.FC = () => {
 
           {/* Navigation */}
           <div className="flex-1 overflow-y-auto p-3 space-y-6">
-            
+
             {/* Main Filters */}
             <div className="space-y-1">
-              <button 
+              <button
                 onClick={() => { setActiveFilter('all'); setActiveFolder(null); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeFilter === 'all' && !activeFolder ? 'bg-white shadow-sm text-slate-900' : 'text-slate-600 hover:bg-slate-100'}`}
               >
                 <FolderOpen size={18} className={activeFilter === 'all' && !activeFolder ? 'text-blue-500' : 'text-slate-400'} />
                 All Notes
               </button>
-              <button 
+              <button
                 onClick={() => { setActiveFilter('favorites'); setActiveFolder(null); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeFilter === 'favorites' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-600 hover:bg-slate-100'}`}
               >
                 <Star size={18} className={activeFilter === 'favorites' ? 'text-amber-500' : 'text-slate-400'} />
                 Favorites
               </button>
-              <button 
+              <button
                 onClick={() => { setActiveFilter('archive'); setActiveFolder(null); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeFilter === 'archive' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-600 hover:bg-slate-100'}`}
               >
                 <Archive size={18} className={activeFilter === 'archive' ? 'text-purple-500' : 'text-slate-400'} />
                 Archive
               </button>
-              <button 
+              <button
                 onClick={() => { setActiveFilter('trash'); setActiveFolder(null); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeFilter === 'trash' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-600 hover:bg-slate-100'}`}
               >
@@ -364,20 +427,20 @@ const NotesModule: React.FC = () => {
             {/* Folders */}
             <div>
               <div className="flex items-center justify-between px-3 mb-2">
-                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Folders</h3>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Folders</h3>
               </div>
               <div className="space-y-1">
                 {folders.map((folder) => (
                   <div key={folder.id} className="group relative">
-                     <button 
-                        onClick={() => { setActiveFolder(folder.id as FolderType); setActiveFilter('all'); setMobileMenuOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeFolder === folder.id ? 'bg-white shadow-sm text-slate-900' : 'text-slate-600 hover:bg-slate-100'}`}
-                     >
-                        <span className={activeFolder === folder.id ? 'text-blue-500' : 'text-slate-400'}>
-                           <folder.icon size={18} />
-                        </span>
-                        <span className="capitalize flex-1 text-left">{folder.label}</span>
-                     </button>
+                    <button
+                      onClick={() => { setActiveFolder(folder.id as FolderType); setActiveFilter('all'); setMobileMenuOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeFolder === folder.id ? 'bg-white shadow-sm text-slate-900' : 'text-slate-600 hover:bg-slate-100'}`}
+                    >
+                      <span className={activeFolder === folder.id ? 'text-blue-500' : 'text-slate-400'}>
+                        <folder.icon size={18} />
+                      </span>
+                      <span className="capitalize flex-1 text-left">{folder.label}</span>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -391,13 +454,13 @@ const NotesModule: React.FC = () => {
         {/* Header */}
         <div className="h-16 px-4 md:px-6 border-b border-slate-100 flex items-center justify-between bg-white z-10 sticky top-0">
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg active:bg-slate-200"
             >
               <MoreVertical size={20} />
             </button>
-            <button 
+            <button
               onClick={() => setIsSidebarVisible(!isSidebarVisible)}
               className="hidden md:flex p-2 -ml-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
               title={isSidebarVisible ? "Hide Sidebar" : "Show Sidebar"}
@@ -414,21 +477,21 @@ const NotesModule: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 mr-2">
-              <button 
+              <button
                 onClick={() => setViewMode('grid')}
                 className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 <LayoutGrid size={18} />
               </button>
-              <button 
+              <button
                 onClick={() => setViewMode('list')}
                 className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 <List size={18} />
               </button>
             </div>
-            
-            <button 
+
+            <button
               onClick={handleCreateNote}
               className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-slate-200 active:scale-95"
             >
@@ -448,7 +511,7 @@ const NotesModule: React.FC = () => {
               {sortedNotes.map((note) => {
                 const styles = getColorStyles(note.color);
                 return (
-                  <div 
+                  <div
                     key={note.id}
                     onClick={() => handleOpenNote(note)}
                     className={`
@@ -458,16 +521,16 @@ const NotesModule: React.FC = () => {
                     `}
                   >
                     <div className={`flex-1 ${viewMode === 'list' ? 'min-w-0' : ''}`}>
-                       <div className="flex items-start justify-between mb-2">
-                          <h3 className={`font-semibold transition-colors ${viewMode === 'list' ? 'text-base truncate' : 'text-lg line-clamp-2'} ${styles.text}`}>
-                            {note.title || 'Untitled Note'}
-                          </h3>
-                          {note.isPinned && <Pin size={16} className="text-slate-400 rotate-45 shrink-0 ml-2" fill="currentColor" />}
-                       </div>
-                       
-                       <p className={`text-slate-500 text-sm leading-relaxed ${viewMode === 'list' ? 'truncate' : 'line-clamp-4'}`}>
-                          {note.excerpt || stripHtml(note.content).substring(0, 100)}
-                       </p>
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className={`font-semibold transition-colors ${viewMode === 'list' ? 'text-base truncate' : 'text-lg line-clamp-2'} ${styles.text}`}>
+                          {note.title || 'Untitled Note'}
+                        </h3>
+                        {note.isPinned && <Pin size={16} className="text-slate-400 rotate-45 shrink-0 ml-2" fill="currentColor" />}
+                      </div>
+
+                      <p className={`text-slate-500 text-sm leading-relaxed ${viewMode === 'list' ? 'truncate' : 'line-clamp-4'}`}>
+                        {note.excerpt || stripHtml(note.content).substring(0, 100)}
+                      </p>
                     </div>
 
                     <div className={`
@@ -479,40 +542,40 @@ const NotesModule: React.FC = () => {
                           {note.folder}
                         </span>
                         <span className="text-xs text-slate-400">
-                           {formatDistanceToNow(note.timestamp, { addSuffix: true })}
+                          {formatDistanceToNow(note.timestamp, { addSuffix: true })}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={(e) => {e.stopPropagation(); handleOpenNote(note);}}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleOpenNote(note); }}
                           className="p-3 md:p-2 rounded-full hover:bg-white text-slate-400 hover:text-slate-600"
                           title="Edit Note"
                         >
-                           <Edit size={16} />
+                          <Edit size={16} />
                         </button>
-                        <button 
+                        <button
                           onClick={(e) => toggleFavorite(e, note.id)}
                           className={`p-3 md:p-2 rounded-full hover:bg-white ${note.isFavorite ? 'text-amber-400' : 'text-slate-400'}`}
                         >
                           <Star size={16} fill={note.isFavorite ? "currentColor" : "none"} />
                         </button>
-                        <button 
+                        <button
                           onClick={(e) => togglePin(e, note.id)}
                           className={`p-3 md:p-2 rounded-full hover:bg-white ${note.isPinned ? 'text-blue-500' : 'text-slate-400'}`}
                         >
                           <Pin size={16} />
                         </button>
-                        <button 
+                        <button
                           onClick={(e) => toggleArchive(e, note.id)}
                           className={`p-3 md:p-2 rounded-full hover:bg-white ${note.folder === 'archive' ? 'text-purple-500' : 'text-slate-400 hover:text-purple-500'}`}
                           title={note.folder === 'archive' ? "Unarchive" : "Archive"}
                         >
                           <Archive size={16} />
                         </button>
-                        <button 
-                           onClick={(e) => initiateMoveToTrash(e, note.id)}
-                           className="p-3 md:p-2 rounded-full hover:bg-white text-slate-400 hover:text-red-500"
+                        <button
+                          onClick={(e) => initiateMoveToTrash(e, note.id)}
+                          className="p-3 md:p-2 rounded-full hover:bg-white text-slate-400 hover:text-red-500"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -523,17 +586,17 @@ const NotesModule: React.FC = () => {
               })}
             </div>
           ) : (
-             <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
-                   {activeFilter === 'archive' ? <Archive size={32} /> : <Search size={32} />}
-                </div>
-                <h3 className="text-lg font-semibold text-slate-900">
-                   {activeFilter === 'archive' ? 'No archived notes' : 'No notes found'}
-                </h3>
-                <p className="text-slate-500 mt-1 max-w-xs">
-                   {activeFilter === 'archive' ? 'Notes you archive will appear here.' : 'Try adjusting your filters or create a new note to get started.'}
-                </p>
-             </div>
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                {activeFilter === 'archive' ? <Archive size={32} /> : <Search size={32} />}
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900">
+                {activeFilter === 'archive' ? 'No archived notes' : 'No notes found'}
+              </h3>
+              <p className="text-slate-500 mt-1 max-w-xs">
+                {activeFilter === 'archive' ? 'Notes you archive will appear here.' : 'Try adjusting your filters or create a new note to get started.'}
+              </p>
+            </div>
           )}
         </div>
       </div>
@@ -544,89 +607,89 @@ const NotesModule: React.FC = () => {
           {/* Editor Header */}
           <div className={`h-16 px-4 md:px-8 border-b border-slate-100 flex items-center justify-between shrink-0 ${editorStyles.bg}`}>
             <div className="flex items-center gap-4">
-              <button 
+              <button
                 onClick={closeEditor}
                 className="p-2 -ml-2 hover:bg-black/5 rounded-lg text-slate-500 transition-colors"
               >
                 <ChevronLeft size={24} />
               </button>
               <div className="flex flex-col">
-                 <span className="text-xs text-slate-400 font-medium flex items-center gap-1 uppercase tracking-wider">
-                    {activeFolder || selectedNote?.folder || 'Uncategorized'} 
-                    {isSaving && <span className="text-slate-300 ml-2 animate-pulse">• Saving...</span>}
-                 </span>
+                <span className="text-xs text-slate-400 font-medium flex items-center gap-1 uppercase tracking-wider">
+                  {activeFolder || selectedNote?.folder || 'Uncategorized'}
+                  {isSaving && <span className="text-slate-300 ml-2 animate-pulse">• Saving...</span>}
+                </span>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-               {/* Color Picker Toggle */}
-               <div className="relative">
-                  <button 
-                     onClick={() => setIsColorPickerOpen(!isColorPickerOpen)}
-                     className={`p-2 rounded-lg transition-colors ${isColorPickerOpen ? 'bg-slate-200 text-slate-900' : 'hover:bg-black/5 text-slate-400 hover:text-slate-600'}`}
-                     title="Change Color"
-                  >
-                     <Palette size={20} />
-                  </button>
-                  {isColorPickerOpen && (
-                     <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-100 p-3 flex gap-2 z-10 animate-in zoom-in-95 duration-200">
-                        {[
-                          { id: 'white', bg: 'bg-white', ring: 'ring-slate-200' },
-                          { id: 'blue', bg: 'bg-blue-50', ring: 'ring-blue-200' },
-                          { id: 'amber', bg: 'bg-amber-50', ring: 'ring-amber-200' },
-                          { id: 'emerald', bg: 'bg-emerald-50', ring: 'ring-emerald-200' },
-                          { id: 'purple', bg: 'bg-purple-50', ring: 'ring-purple-200' },
-                          { id: 'rose', bg: 'bg-rose-50', ring: 'ring-rose-200' },
-                          { id: 'indigo', bg: 'bg-indigo-50', ring: 'ring-indigo-200' },
-                          { id: 'teal', bg: 'bg-teal-50', ring: 'ring-teal-200' }
-                        ].map(c => (
-                           <button
-                              key={c.id}
-                              onClick={() => { setEditorColor(c.id); setIsColorPickerOpen(false); }}
-                              className={`
+              {/* Color Picker Toggle */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsColorPickerOpen(!isColorPickerOpen)}
+                  className={`p-2 rounded-lg transition-colors ${isColorPickerOpen ? 'bg-slate-200 text-slate-900' : 'hover:bg-black/5 text-slate-400 hover:text-slate-600'}`}
+                  title="Change Color"
+                >
+                  <Palette size={20} />
+                </button>
+                {isColorPickerOpen && (
+                  <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-100 p-3 flex gap-2 z-10 animate-in zoom-in-95 duration-200">
+                    {[
+                      { id: 'white', bg: 'bg-white', ring: 'ring-slate-200' },
+                      { id: 'blue', bg: 'bg-blue-50', ring: 'ring-blue-200' },
+                      { id: 'amber', bg: 'bg-amber-50', ring: 'ring-amber-200' },
+                      { id: 'emerald', bg: 'bg-emerald-50', ring: 'ring-emerald-200' },
+                      { id: 'purple', bg: 'bg-purple-50', ring: 'ring-purple-200' },
+                      { id: 'rose', bg: 'bg-rose-50', ring: 'ring-rose-200' },
+                      { id: 'indigo', bg: 'bg-indigo-50', ring: 'ring-indigo-200' },
+                      { id: 'teal', bg: 'bg-teal-50', ring: 'ring-teal-200' }
+                    ].map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => { setEditorColor(c.id); setIsColorPickerOpen(false); }}
+                        className={`
                                 w-8 h-8 rounded-full border border-slate-200 transition-all hover:scale-110 
                                 ${c.bg} ${c.id === editorColor ? `ring-2 ring-offset-2 ${c.ring}` : ''}
                               `}
-                              title={c.id}
-                           />
-                        ))}
-                     </div>
-                  )}
-               </div>
+                        title={c.id}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
 
-               <button onClick={() => toggleArchive({ stopPropagation: () => {} } as any, selectedNote?.id || '')} className={`p-2 hover:bg-black/5 rounded-lg transition-colors hidden sm:block ${selectedNote?.folder === 'archive' ? 'text-purple-500' : 'text-slate-400 hover:text-purple-600'}`} title={selectedNote?.folder === 'archive' ? "Unarchive" : "Archive"}>
-                  <Archive size={20} />
-               </button>
-               <button onClick={() => toggleFavorite({ stopPropagation: () => {} } as any, selectedNote?.id || '')} className="p-2 hover:bg-black/5 rounded-lg text-slate-400 hover:text-slate-600 transition-colors hidden sm:block" title="Favorite">
-                  <Star size={20} fill={selectedNote?.isFavorite ? "currentColor" : "none"} className={selectedNote?.isFavorite ? "text-amber-400" : ""} />
-               </button>
-               <button className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-xl shadow-md hover:bg-slate-800 transition-colors flex items-center gap-2 active:scale-95" onClick={closeEditor}>
-                  <Save size={16} />
-                  Done
-               </button>
+              <button onClick={() => toggleArchive({ stopPropagation: () => { } } as any, selectedNote?.id || '')} className={`p-2 hover:bg-black/5 rounded-lg transition-colors hidden sm:block ${selectedNote?.folder === 'archive' ? 'text-purple-500' : 'text-slate-400 hover:text-purple-600'}`} title={selectedNote?.folder === 'archive' ? "Unarchive" : "Archive"}>
+                <Archive size={20} />
+              </button>
+              <button onClick={() => toggleFavorite({ stopPropagation: () => { } } as any, selectedNote?.id || '')} className="p-2 hover:bg-black/5 rounded-lg text-slate-400 hover:text-slate-600 transition-colors hidden sm:block" title="Favorite">
+                <Star size={20} fill={selectedNote?.isFavorite ? "currentColor" : "none"} className={selectedNote?.isFavorite ? "text-amber-400" : ""} />
+              </button>
+              <button className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-xl shadow-md hover:bg-slate-800 transition-colors flex items-center gap-2 active:scale-95" onClick={closeEditor}>
+                <Save size={16} />
+                Done
+              </button>
             </div>
           </div>
 
           {/* Editor Body */}
           <div className="flex-1 flex flex-col overflow-hidden">
-             <div className="px-8 pt-8 pb-4 shrink-0">
-                <input
-                  type="text"
-                  placeholder="Note Title"
-                  value={editorTitle}
-                  onChange={(e) => setEditorTitle(e.target.value)}
-                  className={`w-full text-3xl md:text-4xl font-bold border-none focus:ring-0 bg-transparent p-0 ${editorStyles.text} ${editorStyles.placeholder}`}
-                />
-             </div>
-             <div className="flex-1 overflow-hidden relative flex flex-col">
-                <div id="quill-editor" ref={editorContainerRef} className="h-full border-none" />
-             </div>
+            <div className="px-8 pt-8 pb-4 shrink-0">
+              <input
+                type="text"
+                placeholder="Note Title"
+                value={editorTitle}
+                onChange={(e) => setEditorTitle(e.target.value)}
+                className={`w-full text-3xl md:text-4xl font-bold border-none focus:ring-0 bg-transparent p-0 ${editorStyles.text} ${editorStyles.placeholder}`}
+              />
+            </div>
+            <div className="flex-1 overflow-hidden relative flex flex-col">
+              <div id="quill-editor" ref={editorContainerRef} className="h-full border-none" />
+            </div>
           </div>
         </div>
       )}
 
       {/* Confirmation Modal */}
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={!!noteToDelete}
         onClose={() => setNoteToDelete(null)}
         onConfirm={confirmMoveToTrash}

@@ -14,8 +14,20 @@ const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'hayatos-secret-key-change-in-production';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const R2_AUDIO_URL = process.env.R2_AUDIO_URL || '';
 
-app.use(cors());
+// CORS configuration for Cloudflare Pages
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production'
+    ? [FRONTEND_URL, /\.pages\.dev$/]
+    : '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // ==================== HEALTH CHECK ====================
@@ -39,6 +51,14 @@ app.get('/', (req: Request, res: Response) => {
 
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+// Config endpoint for frontend (R2 audio URL, etc.)
+app.get('/api/config', (req: Request, res: Response) => {
+  res.json({
+    audioBaseUrl: R2_AUDIO_URL,
+    version: '1.0.0'
+  });
 });
 
 // ==================== AUTH TYPES ====================

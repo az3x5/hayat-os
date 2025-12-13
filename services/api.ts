@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { Note, Reminder, Transaction, HealthLog, Habit, CalendarEvent } from '../types';
 
-const API_URL = (typeof process !== 'undefined' && process.env?.API_URL) || 'http://localhost:3001';
+// Use Vite environment variables (set in Cloudflare Pages dashboard)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 // Create axios instance with interceptor for auth
 const api = axios.create({
@@ -85,6 +86,11 @@ export const CalendarService = {
 export const SettingsService = {
   get: async () => (await api.get('/api/settings')).data,
   update: async (settings: any) => (await api.put('/api/settings', settings)).data,
+};
+
+// ==================== CONFIG ====================
+export const ConfigService = {
+  get: async () => (await api.get('/api/config')).data,
 };
 
 export default api;

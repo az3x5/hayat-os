@@ -13,7 +13,8 @@ import {
   Moon,
   Columns,
   LayoutGrid,
-  List
+  List,
+  Trash2
 } from 'lucide-react';
 import {
   format,
@@ -56,7 +57,8 @@ const CalendarModule: React.FC = () => {
           HabitsService.getAll()
         ]);
         setEvents(evData.map((e: any) => ({ ...e, date: new Date(e.date) })));
-        setReminders(remData);
+        // Convert reminder dueDate strings to Date objects
+        setReminders(remData.map((r: any) => ({ ...r, dueDate: new Date(r.dueDate) })));
         setHabits(habData);
       } catch (err) {
         console.error('Failed to fetch calendar data', err);
@@ -168,6 +170,18 @@ const CalendarModule: React.FC = () => {
   const openAddModal = () => {
     setNewEventDate(selectedDate);
     setIsAddModalOpen(true);
+  };
+
+  // Delete event
+  const handleDeleteEvent = async (eventId: string) => {
+    const prevEvents = [...events];
+    setEvents(events.filter(e => e.id !== eventId));
+    try {
+      await CalendarService.delete(eventId);
+    } catch (err) {
+      console.error('Failed to delete event', err);
+      setEvents(prevEvents);
+    }
   };
 
   // Filter events
@@ -541,8 +555,17 @@ const CalendarModule: React.FC = () => {
                       event.category === 'personal' ? 'bg-purple-500' :
                         event.category === 'health' ? 'bg-emerald-500' : 'bg-teal-500'
                       }`} />
-                    <div className="bg-slate-50 group-hover:bg-white p-3 rounded-xl border border-transparent group-hover:border-slate-200 group-hover:shadow-sm transition-all cursor-pointer">
-                      <h5 className="text-sm font-semibold text-slate-900">{event.title}</h5>
+                    <div className="bg-slate-50 group-hover:bg-white p-3 rounded-xl border border-transparent group-hover:border-slate-200 group-hover:shadow-sm transition-all">
+                      <div className="flex items-start justify-between">
+                        <h5 className="text-sm font-semibold text-slate-900">{event.title}</h5>
+                        <button
+                          onClick={() => handleDeleteEvent(event.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
+                          title="Delete event"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                       <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
                         <div className="flex items-center gap-1">
                           <Clock size={12} />
@@ -588,7 +611,7 @@ const CalendarModule: React.FC = () => {
                       {reminder.title}
                     </span>
                     <span className="ml-auto text-xs text-slate-500 font-medium bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                      {format(reminder.dueDate, 'h:mm a')}
+                      {reminder.dueDate instanceof Date ? format(reminder.dueDate, 'h:mm a') : '--:--'}
                     </span>
                   </div>
                 ))

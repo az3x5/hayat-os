@@ -547,7 +547,9 @@ const NotesModule: React.FC = () => {
                           {note.folder}
                         </span>
                         <span className="text-xs text-slate-400">
-                          {formatDistanceToNow(note.timestamp, { addSuffix: true })}
+                          {note.timestamp && !isNaN(new Date(note.timestamp).getTime())
+                            ? formatDistanceToNow(new Date(note.timestamp), { addSuffix: true })
+                            : 'recently'}
                         </span>
                       </div>
 

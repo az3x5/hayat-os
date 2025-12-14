@@ -10,7 +10,7 @@ interface NotesCardProps {
 
 const NotesCard: React.FC<NotesCardProps> = ({ notes, onClick }) => {
   return (
-    <div 
+    <div
       className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col h-full hover:shadow-md transition-all cursor-pointer group"
       onClick={onClick}
     >
@@ -33,16 +33,18 @@ const NotesCard: React.FC<NotesCardProps> = ({ notes, onClick }) => {
             <p className="text-xs text-slate-500 mt-1 line-clamp-1">{note.excerpt}</p>
             <div className="flex items-center justify-between mt-2">
               <span className="text-[10px] text-slate-400">
-                {formatDistanceToNow(note.timestamp, { addSuffix: true })}
+                {note.timestamp && !isNaN(new Date(note.timestamp).getTime())
+                  ? formatDistanceToNow(new Date(note.timestamp), { addSuffix: true })
+                  : 'recently'}
               </span>
               <div className={`w-2 h-2 rounded-full bg-${note.color}-400`} />
             </div>
           </div>
         ))}
         {notes.length === 0 && (
-           <div className="flex flex-col items-center justify-center h-full text-center py-6">
-              <p className="text-sm text-slate-400">No notes yet</p>
-           </div>
+          <div className="flex flex-col items-center justify-center h-full text-center py-6">
+            <p className="text-sm text-slate-400">No notes yet</p>
+          </div>
         )}
       </div>
     </div>

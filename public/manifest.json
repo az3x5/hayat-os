@@ -3,7 +3,7 @@
     "name": "HayatOS - Life Operating System",
     "icons": [
         {
-            "src": "/vite.svg",
+            "src": "/icon.svg",
             "sizes": "192x192 512x512",
             "type": "image/svg+xml"
         }

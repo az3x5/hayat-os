@@ -103,7 +103,12 @@ const NotesModule: React.FC = () => {
       try {
         setLoading(true);
         const fetchedNotes = await NotesService.getAll();
-        setNotes(fetchedNotes);
+        // Map backend fields to frontend expected fields
+        const mappedNotes = fetchedNotes.map((n: any) => ({
+          ...n,
+          timestamp: n.updatedAt ? new Date(n.updatedAt) : (n.createdAt ? new Date(n.createdAt) : new Date())
+        }));
+        setNotes(mappedNotes);
       } catch (error) {
         console.error('Failed to fetch notes:', error);
       } finally {

@@ -157,8 +157,10 @@ model Account {
   name          String
   type          String        // checking, savings, investment, cash, credit
   balance       Float         @default(0)
+  change        Float         @default(0) // percentage change vs last month
   accountNumber String?
   institution   String?
+  lastUpdated   DateTime      @default(now())
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -246,6 +248,8 @@ model Investment {
   symbol       String
   quantity     Float
   currentPrice Float    @default(0)
+  value        Float    @default(0) // total value = quantity * currentPrice
+  change       Float    @default(0) // percentage change
   type         String   // stock, crypto, etf, mutual_fund
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -273,19 +277,21 @@ model Loan {
 // ==================== CALENDAR ====================
 
 model CalendarEvent {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  startTime String   // HH:mm format
-  endTime   String   // HH:mm format
-  date      DateTime @db.Date
-  category  String   @default("personal") // work, personal, health, islamic
-  location  String?
-  notes     String?
-  recurring String?  // daily, weekly, monthly, yearly
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  startTime   String   // HH:mm format
+  endTime     String   // HH:mm format
+  date        DateTime @db.Date
+  category    String   @default("personal") // work, personal, health, islamic, family
+  location    String?
+  description String?  // Event description
+  color       String?  // Color for UI display
+  notes       String?
+  recurring   String?  // daily, weekly, monthly, yearly
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([userId])
   @@index([date])

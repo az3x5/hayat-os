@@ -290,12 +290,11 @@ const HabitsModule: React.FC = () => {
          try {
             const newHabit = await HabitsService.create({
                ...habitData,
-               completed: false,
                streak: 0,
                status: 'active'
             });
             // Map history if needed (will be empty)
-            setHabits([...habits, { ...newHabit, history: [] }]);
+            setHabits([...habits, { ...newHabit, history: [], completed: false }]);
          } catch (err) {
             console.error(err);
          }

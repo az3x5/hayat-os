@@ -453,55 +453,87 @@ app.get('/api/budgets', authMiddleware, async (req: AuthRequest, res: Response) 
   res.json(budgets);
 });
 
-// --- HEALTH Routes ---
-app.get('/api/health', authMiddleware, async (req: AuthRequest, res: Response) => {
-  const userId = getUserId(req);
-  const logs = await prisma.healthLog.findMany({
-    where: { userId },
-    orderBy: { date: 'desc' }
-  });
-  res.json(logs);
+// --- HEALTH LOGS Routes ---
+app.get('/api/health-logs', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    const logs = await prisma.healthLog.findMany({
+      where: { userId },
+      orderBy: { date: 'desc' }
+    });
+    res.json(logs);
+  } catch (error: any) {
+    console.error('Health logs GET error:', error);
+    res.status(500).json({ error: 'Failed to fetch health logs', details: error.message });
+  }
 });
 
-app.post('/api/health', authMiddleware, async (req: AuthRequest, res: Response) => {
-  const userId = getUserId(req);
-  const log = await prisma.healthLog.create({
-    data: { ...req.body, userId }
-  });
-  res.json(log);
+app.post('/api/health-logs', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    const log = await prisma.healthLog.create({
+      data: { ...req.body, userId }
+    });
+    res.json(log);
+  } catch (error: any) {
+    console.error('Health logs POST error:', error);
+    res.status(500).json({ error: 'Failed to create health log', details: error.message });
+  }
 });
 
 // --- CALENDAR Routes ---
 app.get('/api/events', authMiddleware, async (req: AuthRequest, res: Response) => {
-  const userId = getUserId(req);
-  const events = await prisma.calendarEvent.findMany({
-    where: { userId },
-    orderBy: { date: 'asc' }
-  });
-  res.json(events);
+  try {
+    const userId = getUserId(req);
+    const events = await prisma.calendarEvent.findMany({
+      where: { userId },
+      orderBy: { date: 'asc' }
+    });
+    res.json(events);
+  } catch (error: any) {
+    console.error('Events GET error:', error);
+    res.status(500).json({ error: 'Failed to fetch events', details: error.message });
+  }
 });
 
 app.post('/api/events', authMiddleware, async (req: AuthRequest, res: Response) => {
-  const userId = getUserId(req);
-  const event = await prisma.calendarEvent.create({
-    data: { ...req.body, userId }
-  });
-  res.json(event);
+  try {
+    const userId = getUserId(req);
+    // Remove client-side ID if present
+    const { id, ...eventData } = req.body;
+    const event = await prisma.calendarEvent.create({
+      data: { ...eventData, userId }
+    });
+    res.json(event);
+  } catch (error: any) {
+    console.error('Events POST error:', error);
+    res.status(500).json({ error: 'Failed to create event', details: error.message });
+  }
 });
 
 app.put('/api/events/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
-  const event = await prisma.calendarEvent.update({
-    where: { id },
-    data: req.body
-  });
-  res.json(event);
+  try {
+    const { id } = req.params;
+    const event = await prisma.calendarEvent.update({
+      where: { id },
+      data: req.body
+    });
+    res.json(event);
+  } catch (error: any) {
+    console.error('Events PUT error:', error);
+    res.status(500).json({ error: 'Failed to update event', details: error.message });
+  }
 });
 
 app.delete('/api/events/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
-  await prisma.calendarEvent.delete({ where: { id } });
-  res.json({ success: true });
+  try {
+    const { id } = req.params;
+    await prisma.calendarEvent.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Events DELETE error:', error);
+    res.status(500).json({ error: 'Failed to delete event', details: error.message });
+  }
 });
 
 // --- ISLAMIC Routes ---
